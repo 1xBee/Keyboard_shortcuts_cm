@@ -1,0 +1,61 @@
+// src/services/login-keyboard-handler.js
+import { createStatusIndicator, showGreenLight, hideLight } from '../lib/status-indicator.js';
+
+export default class LoginKeyboardHandler {
+  constructor() {
+    this.vCtrl = false;
+    this.submitClicked = false;
+    createStatusIndicator();
+  }
+
+  handleKeyUp(e) {
+    if (e.key === "Control" && this.vCtrl) {
+      showGreenLight();
+    }
+  }
+
+  handleKeyDown(e) {
+    if (e.key === "Control") {
+      this.vCtrl = true;
+      return;
+    } else if (e.key === "Shift") return;
+
+    if (this.vCtrl && !e.ctrlKey && !e.altKey) {
+      e.preventDefault();
+    }
+    
+    this.processKey(e);
+    this.vCtrl = false;
+    hideLight();
+  }
+
+  handleClick() {
+    this.stopAll();
+  }
+
+  stopAll() {
+    this.vCtrl = false;
+    hideLight();
+  }
+
+  processKey(e) {
+    const { key, ctrlKey, altKey } = e;
+    
+    if (this.vCtrl && !ctrlKey && !altKey) {
+      if (key === "Escape") {
+        this.stopAll();
+        return;
+      }
+      
+      // Click submit button on any other key
+      if (!this.submitClicked) {
+        const submitButton = document.querySelector('[type=submit]');
+        if (submitButton) {
+          submitButton.click();
+          this.submitClicked = true;
+          console.log("Clicked submit button");
+        }
+      }
+    }
+  }
+}
