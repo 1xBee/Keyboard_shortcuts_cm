@@ -1,5 +1,5 @@
 (() => {
-  // src/lib/status-indicator.js
+  // extension/src/lib/status-indicator.js
   var statusIndicator = null;
   function createStatusIndicator() {
     if (document.getElementById("nav-status-indicator"))
@@ -47,13 +47,15 @@
     statusIndicator.title = "";
   }
 
-  // src/lib/input-helpers.js
+  // extension/src/lib/input-helpers.js
   function focusAndSelectInput(inputEl) {
     if (!inputEl)
       return;
     inputEl.focus();
     if (inputEl.tagName === "INPUT") {
       inputEl.select();
+    } else if (inputEl.tagName === "SELECT") {
+      inputEl.showPicker();
     }
     const rect = inputEl.getBoundingClientRect();
     const isVisible = rect.top >= 0 && rect.left >= 0 && rect.bottom <= window.innerHeight && rect.right <= window.innerWidth;
@@ -86,7 +88,7 @@
     return Array.from(document.querySelectorAll(selectors.headers));
   }
 
-  // src/lib/header-navigation.js
+  // extension/src/lib/header-navigation.js
   function focusHeaderByLetter(letter, selectors, reverse = false) {
     letter = letter.toLowerCase();
     const headers = getAllHeaders(selectors);
@@ -144,7 +146,7 @@
     return false;
   }
 
-  // src/lib/link-navigation.js
+  // extension/src/lib/link-navigation.js
   var currentLink = null;
   function getAllLinksWithPosition(selectors) {
     const rows = Array.from(document.querySelectorAll(selectors.rows));
@@ -237,7 +239,7 @@
     currentLink = null;
   }
 
-  // src/lib/pagination.js
+  // extension/src/lib/pagination.js
   function clickNextPage(selectors) {
     const container = document.querySelector(selectors.nextPage);
     if (container) {
@@ -263,7 +265,7 @@
     return false;
   }
 
-  // src/lib/filters.js
+  // extension/src/lib/filters.js
   var savedFilters = {};
   function saveFilters(selectors) {
     savedFilters = {};
@@ -318,7 +320,7 @@
     return true;
   }
 
-  // src/lib/react-reload.js
+  // extension/src/lib/react-reload.js
   function reloadReactApp(selectors) {
     saveFilters(selectors);
     const rootApp = document.getElementById("rootApp");
@@ -340,7 +342,7 @@
     }
   }
 
-  // src/lib/date-picker.js
+  // extension/src/lib/date-picker.js
   function openDatePickerForFocusedInput() {
     const input = document.activeElement;
     if (input && input.tagName === "INPUT") {
@@ -354,7 +356,7 @@
     return false;
   }
 
-  // src/services/table-keyboard-handler.js
+  // extension/src/services/table-keyboard-handler.js
   var TableKeyboardHandler = class {
     constructor(selectors = {}) {
       this.vCtrl = false;
@@ -448,7 +450,7 @@
     }
   };
 
-  // src/services/login-keyboard-handler.js
+  // extension/src/services/login-keyboard-handler.js
   var LoginKeyboardHandler = class {
     constructor() {
       this.vCtrl = false;
@@ -467,7 +469,6 @@
       } else if (e.key === "Shift")
         return;
       if (this.vCtrl && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
       }
       this.processKey(e);
       this.vCtrl = false;
@@ -490,16 +491,104 @@
         if (!this.submitClicked) {
           const submitButton = document.querySelector("[type=submit]");
           if (submitButton) {
-            submitButton.click();
-            this.submitClicked = true;
-            console.log("Clicked submit button");
+            setTimeout(() => {
+              submitButton.click();
+              this.submitClicked = true;
+              console.log("Clicked submit button");
+            }, 0);
           }
         }
       }
     }
   };
 
-  // src/services/orders-edit-keyboard-handler.js
+  // extension/src/lib/tab-navigation.js
+  function clickTabByLetter(letter, reverse = false) {
+    letter = letter.toLowerCase();
+    const tabs = Array.from(document.querySelectorAll(".nav-tabs a.nav-link"));
+    if (!tabs.length) {
+      console.log("No tabs found");
+      return false;
+    }
+    if (letter === "k") {
+      const invoiceTabs = tabs.filter(
+        (tab) => tab.textContent.trim().toLowerCase().includes("invoice")
+      );
+      if (invoiceTabs.length > 0) {
+        invoiceTabs[0].click();
+        console.log("Clicked first invoice tab");
+        return true;
+      }
+      return false;
+    }
+    if (letter === "c") {
+      const invoiceTabs = tabs.filter(
+        (tab) => tab.textContent.trim().toLowerCase().includes("invoice")
+      );
+      if (invoiceTabs.length > 1) {
+        invoiceTabs[1].click();
+        console.log("Clicked second invoice tab");
+        return true;
+      }
+      return false;
+    }
+    let startIdx = 0;
+    const activeTab = document.querySelector(".nav-tabs a.nav-link.active");
+    if (activeTab) {
+      const activeIndex = tabs.indexOf(activeTab);
+      if (activeIndex !== -1) {
+        startIdx = reverse ? (activeIndex - 1 + tabs.length) % tabs.length : (activeIndex + 1) % tabs.length;
+      }
+    }
+    let found = null;
+    for (let i = 0; i < tabs.length; i++) {
+      const idx = reverse ? (startIdx - i + tabs.length) % tabs.length : (startIdx + i) % tabs.length;
+      const tab = tabs[idx];
+      const tabText = tab.textContent.trim().toLowerCase();
+      if (tabText.includes("invoice")) {
+        continue;
+      }
+      if (tabText.startsWith(letter)) {
+        found = tab;
+        break;
+      }
+    }
+    if (found) {
+      const tabText = found.textContent.trim().toLowerCase();
+      found.click();
+      console.log("Clicked tab:", found.textContent.trim());
+      if (tabText === "all items") {
+        setTimeout(() => {
+          const button = document.querySelector('.mb-3 [type="button"].btn.btn-dark');
+          if (button) {
+            button.click();
+            console.log("Clicked All Items button");
+          }
+        }, 100);
+      }
+      return true;
+    }
+    return false;
+  }
+  function clickNewButton() {
+    const button = document.querySelector('.mb-3 [type="button"].btn.btn-secondary');
+    if (button && isAllItemsTabActive()) {
+      button.click();
+      console.log("Clicked New button");
+      return true;
+    }
+    return false;
+  }
+  function isAllItemsTabActive() {
+    const activeTab = document.querySelector(".nav-tabs a.nav-link.active");
+    if (activeTab) {
+      const tabText = activeTab.textContent.trim().toLowerCase();
+      return tabText === "all items";
+    }
+    return false;
+  }
+
+  // extension/src/services/orders-edit-keyboard-handler.js
   var OrdersEditKeyboardHandler = class {
     constructor() {
       this.vCtrl = false;
@@ -530,85 +619,21 @@
       this.vCtrl = false;
       hideLight();
     }
-    clickTabByLetter(letter) {
-      letter = letter.toLowerCase();
-      const tabs = Array.from(document.querySelectorAll(".nav-tabs a.nav-link"));
-      if (!tabs.length) {
-        console.log("No tabs found");
-        return false;
-      }
-      if (letter === "k") {
-        const invoiceTabs = tabs.filter(
-          (tab) => tab.textContent.trim().toLowerCase().includes("invoice")
-        );
-        if (invoiceTabs.length > 0) {
-          invoiceTabs[0].click();
-          console.log("Clicked first invoice tab");
-          return true;
-        }
-        return false;
-      }
-      if (letter === "c") {
-        const invoiceTabs = tabs.filter(
-          (tab) => tab.textContent.trim().toLowerCase().includes("invoice")
-        );
-        if (invoiceTabs.length > 1) {
-          invoiceTabs[1].click();
-          console.log("Clicked second invoice tab");
-          return true;
-        }
-        return false;
-      }
-      let startIdx = 0;
-      const activeTab = document.querySelector(".nav-tabs a.nav-link.active");
-      if (activeTab) {
-        const activeIndex = tabs.indexOf(activeTab);
-        if (activeIndex !== -1) {
-          startIdx = (activeIndex + 1) % tabs.length;
-        }
-      }
-      let found = null;
-      for (let i = 0; i < tabs.length; i++) {
-        const idx = (startIdx + i) % tabs.length;
-        const tab = tabs[idx];
-        const tabText = tab.textContent.trim().toLowerCase();
-        if (tabText.includes("invoice")) {
-          continue;
-        }
-        if (tabText.startsWith(letter)) {
-          found = tab;
-          break;
-        }
-      }
-      if (found) {
-        const tabText = found.textContent.trim().toLowerCase();
-        found.click();
-        console.log("Clicked tab:", found.textContent.trim());
-        if (tabText === "all items") {
-          setTimeout(() => {
-            const button = document.querySelector('.mb-3 [type="button"].btn.btn-dark');
-            if (button) {
-              button.click();
-              console.log("Clicked All Items button");
-            }
-          }, 100);
-        }
-        return true;
-      }
-      return false;
-    }
     processKey(e) {
       const { key, ctrlKey, altKey } = e;
       if (this.vCtrl && !ctrlKey && !altKey) {
-        if (key.length === 1 && /[a-zA-Z]/.test(key)) {
-          this.clickTabByLetter(key);
+        if (key.toLowerCase() === "n") {
+          clickNewButton();
+          return;
+        } else if (key.length === 1 && /[a-zA-Z]/.test(key)) {
+          clickTabByLetter(key);
           return;
         }
       }
     }
   };
 
-  // src/app/index.js
+  // extension/src/app/index.js
   var currentHandler = null;
   function initializeHandler() {
     if (currentHandler) {

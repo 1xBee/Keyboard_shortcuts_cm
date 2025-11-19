@@ -3,6 +3,8 @@ export function focusAndSelectInput(inputEl) {
   inputEl.focus();
   if (inputEl.tagName === 'INPUT') {
     inputEl.select();
+  }else if (inputEl.tagName === 'SELECT') {
+    inputEl.showPicker();
   }
   
   const rect = inputEl.getBoundingClientRect();

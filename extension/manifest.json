@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Keyboard shortcuts for Chasunamall app",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Enhanced keyboard navigation",
   "icons": {
-    "16": "nomouse.png",
-    "48": "nomouse.png",
-    "128": "nomouse.png"
+    "16": "src/img/nomouse.png",
+    "48": "src/img/nomouse.png",
+    "128": "src/img/nomouse.png"
   },
   "options_page": "options.html",
   "permissions": [],

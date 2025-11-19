@@ -8,6 +8,31 @@ export default class LoginKeyboardHandler {
     createStatusIndicator();
   }
 
+  getShortcutInfo() {
+    return {
+      "name": "Login Page",
+      "modes": [
+        {
+          "mode": "command",
+          "color": "green",
+          "trigger": "Press and release Ctrl",
+          "shortcuts": [
+            {
+              "key": "Ctrl + [Any Key]",
+              "action": "Log in",
+              "description": "Click the Login button"
+            },
+            {
+              "key": "Ctrl + Escape",
+              "action": "Stop commend",
+              "description": "Cancel and reset keyboard handler"
+            }
+          ]
+        }
+      ]
+    };
+  }
+
   handleKeyUp(e) {
     if (e.key === "Control" && this.vCtrl) {
       showGreenLight();

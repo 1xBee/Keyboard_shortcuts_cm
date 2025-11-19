@@ -27,6 +27,98 @@ export default class TableKeyboardHandler {
     createStatusIndicator();
   }
 
+  getShortcutInfo() {
+    return {
+      "name": "Main Page",
+      "modes": [
+        {
+          "mode": "command",
+          "color": "green",
+          "trigger": "Press and release Ctrl",
+          "shortcuts": [
+            {
+              "key": "Ctrl + [Letter]",
+              "action": "Focus columns by letter",
+              "description": "Focus table header starting with the letter (add Shift for reverse)"
+            },
+            {
+              "key": "Ctrl + Backspace",
+              "action": "Clear filters",
+              "description": "Clear all filter inputs"
+            },
+            {
+              "key": "Ctrl + .",
+              "action": "Open date picker",
+              "description": "Open date picker for focused input"
+            },
+            {
+              "key": "Ctrl + Enter",
+              "action": "Sort column",
+              "description": "Click the header of focused input"
+            },
+            {
+              "key": "Ctrl + →",
+              "action": "Next page",
+              "description": "Go to next page"
+            },
+            {
+              "key": "Ctrl + ←",
+              "action": "Prev. page",
+              "description": "Go to previous page"
+            },
+            {
+              "key": "Ctrl + F5",
+              "action": "Reload w/ filters",
+              "description": "Reload app while preserving filters"
+            },
+            {
+              "key": "Ctrl + ↑/↓",
+              "action": "Enter link navigation",
+              "description": "Start link navigation mode"
+            },
+            {
+              "key": "Ctrl + Escape",
+              "action": "Stop commend",
+              "description": "Cancel and reset keyboard handler"
+            }
+          ]
+        },
+        {
+          "mode": "linkNavigation",
+          "color": "orange",
+          "trigger": "Activated by Ctrl + ↑/↓",
+          "shortcuts": [
+            {
+              "key": "↑",
+              "action": "Navigate Up",
+              "description": "Move to previous link"
+            },
+            {
+              "key": "↓",
+              "action": "Navigate Down",
+              "description": "Move to next link"
+            },
+            {
+              "key": "←",
+              "action": "Navigate Left",
+              "description": "Move to link on the left"
+            },
+            {
+              "key": "→",
+              "action": "Navigate Right",
+              "description": "Move to link on the right"
+            },
+            {
+              "key": "Escape",
+              "action": "Exit link navigation",
+              "description": "Exit link navigation mode"
+            }
+          ]
+        }
+      ]
+    };
+  }
+
   handleKeyUp(e) {
     if (e.key === "Control" && this.vCtrl) {
       showGreenLight();
@@ -65,6 +157,12 @@ export default class TableKeyboardHandler {
     const { key, ctrlKey, shiftKey, altKey } = e;
     
     if (this.vCtrl && !ctrlKey && !altKey) {
+      // Check for Escape
+      if (key === "Escape") {
+        this.stopAll();
+        return;
+      }
+      
       // Check if key is a letter (a-z or A-Z)
       if (key.length === 1 && /[a-zA-Z]/.test(key)) {
         focusHeaderByLetter(key, this.selectors, shiftKey);
@@ -97,6 +195,9 @@ export default class TableKeyboardHandler {
           this.linkNavigation = true;
           showOrangeLight();
           navigateLink(key.replace("Arrow", "").toLowerCase(), this.selectors);
+          break;
+        case "Escape":
+          this.stopAll();
           break;
         default:
           break;

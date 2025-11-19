@@ -1,0 +1,31 @@
+{
+    "name": "Order Page",
+    "main (or use better name)": [
+        {
+            "flag (or use a better name)": "vCtr",
+            "color": "green",
+            "shortcuts": [
+                {
+                    "key": "Ctr + letter",
+                    "action": "action",
+                    "descrpiton": "descrpiton"
+                },
+                {
+                    "key": "Ctr + letter",
+                    "action": "action",
+                    "descrpiton": "descrpiton"
+                }
+            ]
+        },
+        {
+            "flag": "linkNav",
+            "color": "orange",
+            "shortcuts": [
+                {
+                    
+                }
+            ]
+        }
+    ]
+
+}
