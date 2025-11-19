@@ -372,6 +372,97 @@
       };
       createStatusIndicator();
     }
+    getShortcutInfo() {
+      return {
+        "name": "Main Page",
+        "modes": [
+          {
+            "mode": "command",
+            "color": "green",
+            "trigger": "Press and release Ctrl",
+            "shortcuts": [
+              {
+                "key": "Ctrl + [Letter]",
+                "action": "Focus columns by letter",
+                "description": "Focus table header starting with the letter (add Shift for reverse)"
+              },
+              {
+                "key": "Ctrl + Backspace",
+                "action": "Clear filters",
+                "description": "Clear all filter inputs"
+              },
+              {
+                "key": "Ctrl + .",
+                "action": "Open date picker",
+                "description": "Open date picker for focused input"
+              },
+              {
+                "key": "Ctrl + Enter",
+                "action": "Sort column",
+                "description": "Click the header of focused input"
+              },
+              {
+                "key": "Ctrl + \u2192",
+                "action": "Next page",
+                "description": "Go to next page"
+              },
+              {
+                "key": "Ctrl + \u2190",
+                "action": "Prev. page",
+                "description": "Go to previous page"
+              },
+              {
+                "key": "Ctrl + F5",
+                "action": "Reload w/ filters",
+                "description": "Reload app while preserving filters"
+              },
+              {
+                "key": "Ctrl + \u2191/\u2193",
+                "action": "Enter link navigation",
+                "description": "Start link navigation mode"
+              },
+              {
+                "key": "Ctrl + Escape",
+                "action": "Stop commend",
+                "description": "Cancel and reset keyboard handler"
+              }
+            ]
+          },
+          {
+            "mode": "linkNavigation",
+            "color": "orange",
+            "trigger": "Activated by Ctrl + \u2191/\u2193",
+            "shortcuts": [
+              {
+                "key": "\u2191",
+                "action": "Navigate Up",
+                "description": "Move to previous link"
+              },
+              {
+                "key": "\u2193",
+                "action": "Navigate Down",
+                "description": "Move to next link"
+              },
+              {
+                "key": "\u2190",
+                "action": "Navigate Left",
+                "description": "Move to link on the left"
+              },
+              {
+                "key": "\u2192",
+                "action": "Navigate Right",
+                "description": "Move to link on the right"
+              },
+              {
+                "key": "Escape",
+                "action": "Exit link navigation",
+                "description": "Exit link navigation mode"
+              }
+            ]
+          }
+        ]
+      };
+    }
     handleKeyUp(e) {
       if (e.key === "Control" && this.vCtrl) {
         showGreenLight();
@@ -403,6 +494,10 @@
     processKey(e) {
       const { key, ctrlKey, shiftKey, altKey } = e;
       if (this.vCtrl && !ctrlKey && !altKey) {
+        if (key === "Escape") {
+          this.stopAll();
+          return;
+        }
         if (key.length === 1 && /[a-zA-Z]/.test(key)) {
           focusHeaderByLetter(key, this.selectors, shiftKey);
           return;
@@ -434,6 +529,9 @@
             showOrangeLight();
             navigateLink(key.replace("Arrow", "").toLowerCase(), this.selectors);
             break;
+          case "Escape":
+            this.stopAll();
+            break;
           default:
             break;
         }
@@ -457,6 +555,30 @@
       this.submitClicked = false;
       createStatusIndicator();
     }
+    getShortcutInfo() {
+      return {
+        "name": "Login Page",
+        "modes": [
+          {
+            "mode": "command",
+            "color": "green",
+            "trigger": "Press and release Ctrl",
+            "shortcuts": [
+              {
+                "key": "Ctrl + [Any Key]",
+                "action": "Log in",
+                "description": "Click the Login button"
+              },
+              {
+                "key": "Ctrl + Escape",
+                "action": "Stop commend",
+                "description": "Cancel and reset keyboard handler"
+              }
+            ]
+          }
+        ]
+      };
+    }
     handleKeyUp(e) {
       if (e.key === "Control" && this.vCtrl) {
         showGreenLight();
@@ -469,6 +591,7 @@
       } else if (e.key === "Shift")
         return;
       if (this.vCtrl && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
       }
       this.processKey(e);
       this.vCtrl = false;
@@ -588,11 +711,85 @@
     return false;
   }
 
+  // extension/src/lib/shortcut-modal.js
+  function createModal(shortcutData) {
+    if (document.getElementById("kb-shortcut-modal"))
+      return;
+    let rowsHtml = "";
+    shortcutData.modes.forEach((mode) => {
+      mode.shortcuts.forEach((sc) => {
+        rowsHtml += `
+        <div class="kb-row">
+          <kbd class="kb-key">${sc.key}</kbd>
+          <div class="kb-desc">
+            <div class="kb-action">${sc.action}</div>
+            <div class="kb-detail">${sc.description}</div>
+          </div>
+        </div>
+      `;
+      });
+    });
+    const modalHtml = `
+    <div id="kb-shortcut-modal" class="kb-modal-overlay">
+      <div class="kb-modal">
+        <div class="kb-header">
+          <h3 class="kb-title">${shortcutData.name} Shortcuts</h3>
+          <span class="kb-close">Press Esc to close</span>
+        </div>
+        <div class="kb-body">${rowsHtml}</div>
+      </div>
+    </div>
+  `;
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+  }
+  function removeModal() {
+    document.getElementById("kb-shortcut-modal")?.remove();
+  }
+
   // extension/src/services/orders-edit-keyboard-handler.js
   var OrdersEditKeyboardHandler = class {
     constructor() {
       this.vCtrl = false;
       createStatusIndicator();
+    }
+    getShortcutInfo() {
+      return {
+        "name": "Orders Page",
+        "modes": [
+          {
+            "mode": "command",
+            "color": "green",
+            "trigger": "Press and release Ctrl",
+            "shortcuts": [
+              {
+                "key": "Ctrl + N",
+                "action": "New delivery",
+                "description": "Click the 'create new delivery' button in 'All items' tab"
+              },
+              {
+                "key": "Ctrl + [Letter]",
+                "action": "Click Tab By Letter",
+                "description": "Click tab starting with the letter"
+              },
+              {
+                "key": "Ctrl + K",
+                "action": "Kallah invoice",
+                "description": "Click tab Kallah side invoice"
+              },
+              {
+                "key": "Ctrl + C",
+                "action": "Chosson invoice",
+                "description": "Click tab Chosson side invoice"
+              },
+              {
+                "key": "Ctrl + Escape",
+                "action": "Stop commend",
+                "description": "Cancel and reset keyboard handler"
+              }
+            ]
+          }
+        ]
+      };
     }
     handleKeyUp(e) {
       if (e.key === "Control" && this.vCtrl) {
@@ -618,11 +815,19 @@
     stopAll() {
       this.vCtrl = false;
       hideLight();
+      removeModal();
     }
     processKey(e) {
       const { key, ctrlKey, altKey } = e;
       if (this.vCtrl && !ctrlKey && !altKey) {
-        if (key.toLowerCase() === "n") {
+        if (key === "Escape") {
+          this.stopAll();
+          return;
+        }
+        if (key === "?") {
+          createModal(this.getShortcutInfo());
+          return;
+        } else if (key.toLowerCase() === "n") {
           clickNewButton();
           return;
         } else if (key.length === 1 && /[a-zA-Z]/.test(key)) {

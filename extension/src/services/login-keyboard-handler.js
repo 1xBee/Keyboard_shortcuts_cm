@@ -76,9 +76,11 @@ export default class LoginKeyboardHandler {
       if (!this.submitClicked) {
         const submitButton = document.querySelector('[type=submit]');
         if (submitButton) {
-          submitButton.click();
-          this.submitClicked = true;
-          console.log("Clicked submit button");
+          setTimeout(()=> {
+            submitButton.click();
+            this.submitClicked = true;
+            console.log("Clicked submit button");
+          }, 0);
         }
       }
     }

@@ -1,6 +1,6 @@
 {
   "name": "keyboard-shortcuts-extension",
-  "version": "2.0.1",
+  "version": "2.0.0",
   "scripts": {
     "build": "esbuild extension/src/app/index.js --bundle --outfile=dist/bundle.js --format=iife",
     "release": "npm run build && npm run copy-release",
