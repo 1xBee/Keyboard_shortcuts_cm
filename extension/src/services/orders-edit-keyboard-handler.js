@@ -1,7 +1,7 @@
 // src/services/orders-edit-keyboard-handler.js
 import { createStatusIndicator, showGreenLight, hideLight } from '../lib/status-indicator.js';
 import { clickTabByLetter, clickNewButton } from '../lib/tab-navigation.js';
-import { injectModalStyles, createModal, removeModal } from '../lib/shortcut-modal.js';
+import { showShortcutsModal, hideShortcutsModal   } from '../lib/shortcut-modal.js';
 
 export default class OrdersEditKeyboardHandler {
   constructor() {
@@ -76,7 +76,7 @@ export default class OrdersEditKeyboardHandler {
   stopAll() {
     this.vCtrl = false;
     hideLight();
-    removeModal();
+    hideShortcutsModal();
   }
 
   processKey(e) {
@@ -86,9 +86,8 @@ export default class OrdersEditKeyboardHandler {
       if (key === "Escape") {
         this.stopAll();
         return;
-      }
-      if (key === '?') {
-        createModal(this.getShortcutInfo());
+      }else if (key === '/') {
+        showShortcutsModal(this.getShortcutInfo());
         return;
       }else if (key.toLowerCase() === 'n'){
         clickNewButton();

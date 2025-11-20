@@ -7,6 +7,7 @@ import { clickNextPage, clickPreviousPage } from '../lib/pagination.js';
 import { saveFilters, restoreFilters } from '../lib/filters.js';
 import { reloadReactApp } from '../lib/react-reload.js';
 import { openDatePickerForFocusedInput } from '../lib/date-picker.js';
+import { showShortcutsModal, hideShortcutsModal } from '../lib/shortcut-modal.js';
 
 export default class TableKeyboardHandler {
   constructor(selectors = {}) {
@@ -151,6 +152,7 @@ export default class TableKeyboardHandler {
     this.linkNavigation = false;
     hideLight();
     resetLinkNavigation();
+    hideShortcutsModal();
   }
 
   processKey(e) {
@@ -195,6 +197,9 @@ export default class TableKeyboardHandler {
           this.linkNavigation = true;
           showOrangeLight();
           navigateLink(key.replace("Arrow", "").toLowerCase(), this.selectors);
+          break;
+        case '/':
+          showShortcutsModal(this.getShortcutInfo());
           break;
         case "Escape":
           this.stopAll();

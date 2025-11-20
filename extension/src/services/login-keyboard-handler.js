@@ -1,5 +1,6 @@
 // src/services/login-keyboard-handler.js
 import { createStatusIndicator, showGreenLight, hideLight } from '../lib/status-indicator.js';
+import { showShortcutsModal, hideShortcutsModal } from '../lib/shortcut-modal.js';
 
 export default class LoginKeyboardHandler {
   constructor() {
@@ -61,19 +62,21 @@ export default class LoginKeyboardHandler {
   stopAll() {
     this.vCtrl = false;
     hideLight();
+    hideShortcutsModal();
   }
 
   processKey(e) {
     const { key, ctrlKey, altKey } = e;
     
     if (this.vCtrl && !ctrlKey && !altKey) {
-      if (key === "Escape") {
+      if (key === '/'){
+        showShortcutsModal(this.getShortcutInfo());
+        return;
+      }else if (key === "Escape") {
         this.stopAll();
         return;
-      }
-      
-      // Click submit button on any other key
-      if (!this.submitClicked) {
+      }else if (!this.submitClicked) { 
+        // Click submit button on any other key
         const submitButton = document.querySelector('[type=submit]');
         if (submitButton) {
           setTimeout(()=> {

@@ -1,85 +1,219 @@
-// src/lib/shortcut-modal.js
+// extension/src/lib/shortcuts-modal.js
 
-const MODAL_STYLES = `
-  .kb-modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999;
-    display: flex; align-items: center; justify-content: center;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    animation: kbFadeIn 0.15s ease-out;
-  }
-  .kb-modal {
-    background: white; width: 90%; max-width: 500px;
-    border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    overflow: hidden; max-height: 80vh; display: flex; flex-direction: column;
-  }
-  .kb-header {
-    padding: 20px 24px; border-bottom: 1px solid #e5e7eb;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .kb-title { font-size: 18px; font-weight: 600; color: #111827; margin: 0; }
-  .kb-close { font-size: 13px; color: #6b7280; }
-  .kb-body { overflow-y: auto; }
-  .kb-row {
-    display: flex; gap: 16px; padding: 14px 24px; border-bottom: 1px solid #f3f4f6;
-    align-items: center;
-  }
-  .kb-row:last-child { border-bottom: none; }
-  .kb-row:hover { background: #f9fafb; }
-  .kb-key {
-    min-width: 32px; height: 28px; padding: 0 8px;
-    background: linear-gradient(180deg, #fff 0%, #f3f4f6 100%);
-    border: 1px solid #d1d5db; border-radius: 6px;
-    box-shadow: 0 2px 0 #d1d5db, inset 0 1px 0 #fff;
-    font: 600 12px/28px ui-monospace, monospace;
-    color: #374151; text-align: center; display: inline-block;
-  }
-  .kb-desc { flex: 1; }
-  .kb-action { font-weight: 500; color: #111827; margin-bottom: 2px; }
-  .kb-detail { font-size: 13px; color: #6b7280; }
-  @keyframes kbFadeIn { from { opacity: 0; transform: scale(0.96); } }
-`;
+const MODAL_ID = 'keyboard-shortcuts-modal';
+const BACKDROP_ID = 'keyboard-shortcuts-backdrop';
 
-export function injectModalStyles() {
-  if (document.getElementById('kb-help-styles')) return;
-  const style = document.createElement('style');
-  style.id = 'kb-help-styles';
-  style.textContent = MODAL_STYLES;
-  document.head.appendChild(style);
+let modalElement = null;
+let backdropElement = null;
+
+/**
+ * Show the keyboard shortcuts modal
+ * @param {Object} shortcutInfo - The shortcut information from getShortcutInfo()
+ */
+export function showShortcutsModal(shortcutInfo) {
+  // If modal already exists, just show it
+  if (modalElement) {
+    modalElement.style.display = 'block';
+    backdropElement.style.display = 'block';
+    // Force reflow before adding show class for animation
+    modalElement.offsetHeight;
+    backdropElement.offsetHeight;
+    modalElement.classList.add('show');
+    backdropElement.classList.add('show');
+    document.body.classList.add('modal-open');
+    return;
+  }
+
+  // Create modal
+  modalElement = createModalElement(shortcutInfo);
+  backdropElement = createBackdropElement();
+
+  // Inject into page
+  document.body.appendChild(backdropElement);
+  document.body.appendChild(modalElement);
+  document.body.classList.add('modal-open');
+
+  // Set display and force reflow, then animate
+  modalElement.style.display = 'block';
+  backdropElement.style.display = 'block';
+  modalElement.offsetHeight; // Force reflow
+  
+  modalElement.classList.add('show');
+  backdropElement.classList.add('show');
+
+  // Add event listeners
+  addEventListeners();
 }
 
-export function createModal(shortcutData) {
-  if (document.getElementById('kb-shortcut-modal')) return;
+/**
+ * Hide the keyboard shortcuts modal
+ */
+export function hideShortcutsModal() {
+  if (!modalElement) return;
 
-  let rowsHtml = '';
-  shortcutData.modes.forEach(mode => {
-    mode.shortcuts.forEach(sc => {
-      rowsHtml += `
-        <div class="kb-row">
-          <kbd class="kb-key">${sc.key}</kbd>
-          <div class="kb-desc">
-            <div class="kb-action">${sc.action}</div>
-            <div class="kb-detail">${sc.description}</div>
-          </div>
-        </div>
-      `;
-    });
-  });
+  // Hide with animation
+  modalElement.classList.remove('show');
+  backdropElement.classList.remove('show');
 
-  const modalHtml = `
-    <div id="kb-shortcut-modal" class="kb-modal-overlay">
-      <div class="kb-modal">
-        <div class="kb-header">
-          <h3 class="kb-title">${shortcutData.name} Shortcuts</h3>
-          <span class="kb-close">Press Esc to close</span>
+  setTimeout(() => {
+    if (modalElement) { // Check if still exists
+      modalElement.style.display = 'none';
+      backdropElement.style.display = 'none';
+      document.body.classList.remove('modal-open');
+      
+      // Clean up
+      removeEventListeners();
+      modalElement.remove();
+      backdropElement.remove();
+      modalElement = null;
+      backdropElement = null;
+    }
+  }, 150);
+}
+
+
+/**
+ * Create the modal element
+ */
+function createModalElement(shortcutInfo) {
+  const modal = document.createElement('div');
+  modal.id = MODAL_ID;
+  modal.className = 'modal fade';
+  modal.tabIndex = -1;
+  modal.setAttribute('role', 'dialog');
+  
+  modal.innerHTML = `
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            ${shortcutInfo.name} - Keyboard Shortcuts
+          </h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
         </div>
-        <div class="kb-body">${rowsHtml}</div>
+        <div class="modal-body">
+          ${generateModesHTML(shortcutInfo.modes)}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   `;
-
-  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  return modal;
 }
 
-export function removeModal() {
-  document.getElementById('kb-shortcut-modal')?.remove();
+/**
+ * Create the backdrop element
+ */
+function createBackdropElement() {
+  const backdrop = document.createElement('div');
+  backdrop.id = BACKDROP_ID;
+  backdrop.className = 'modal-backdrop fade';
+  return backdrop;
+}
+
+/**
+ * Generate HTML for all modes
+ */
+/**
+ * Generate HTML for all modes
+ */
+function generateModesHTML(modes) {
+  return modes.map(mode => {
+    return `
+      <div class="mb-4">
+        <h6 class="font-weight-bold">
+          <span class="d-inline-block rounded-circle mr-2" style="width: 12px; height: 12px; background-color: ${mode.color};"></span>
+          ${mode.mode.charAt(0).toUpperCase() + mode.mode.slice(1)} Mode
+        </h6>
+        <p class="text-muted small mb-3">
+          <em>${mode.trigger}</em>
+        </p>
+        <table class="table table-sm table-hover">
+          <thead class="thead-light">
+            <tr>
+              <th style="width: 35%">Key</th>
+              <th style="width: 25%">Action</th>
+              <th style="width: 40%">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${generateShortcutsHTML(mode.shortcuts)}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }).join('');
+}
+
+/**
+ * Generate HTML for shortcuts list
+ */
+function generateShortcutsHTML(shortcuts) {
+  return shortcuts.map(shortcut => `
+    <tr>
+      <td>${formatKeys(shortcut.key)}</td>
+      <td><strong>${shortcut.action}</strong></td>
+      <td class="text-muted">${shortcut.description}</td>
+    </tr>
+  `).join('');
+}
+
+/**
+ * Format keyboard keys with <kbd> tags
+ */
+function formatKeys(keyString) {
+  // Split by + and wrap each part in <kbd>
+  return keyString
+    .split('+')
+    .map(key => `<kbd class="bg-white border border-dark text-dark rounded-2 fw-bold shadow-sm">${key.trim()}</kbd>`)
+    .join(' + ');
+}
+
+/**
+ * Add event listeners for closing modal
+ */
+function addEventListeners() {
+  // Close button
+  const closeButtons = modalElement.querySelectorAll('[data-dismiss="modal"]');
+  closeButtons.forEach(btn => {
+    btn.addEventListener('click', hideShortcutsModal);
+  });
+
+  // Escape key
+  document.addEventListener('keydown', handleEscapeKey);
+
+  // Click outside (backdrop) - but not modal content
+  backdropElement.addEventListener('click', hideShortcutsModal);
+  
+  // Stop propagation when clicking modal content
+  const modalDialog = modalElement.querySelector('.modal-dialog');
+  if (modalDialog) {
+    modalDialog.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+  }
+}
+
+/**
+ * Remove event listeners
+ */
+function removeEventListeners() {
+  document.removeEventListener('keydown', handleEscapeKey);
+  if (backdropElement) {
+    backdropElement.removeEventListener('click', hideShortcutsModal);
+  }
+}
+
+/**
+ * Handle escape key press
+ */
+function handleEscapeKey(e) {
+  if (e.key === 'Escape') {
+    hideShortcutsModal();
+  }
 }

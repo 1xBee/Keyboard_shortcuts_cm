@@ -356,6 +356,151 @@
     return false;
   }
 
+  // extension/src/lib/shortcut-modal.js
+  var MODAL_ID = "keyboard-shortcuts-modal";
+  var BACKDROP_ID = "keyboard-shortcuts-backdrop";
+  var modalElement = null;
+  var backdropElement = null;
+  function showShortcutsModal(shortcutInfo) {
+    if (modalElement) {
+      modalElement.style.display = "block";
+      backdropElement.style.display = "block";
+      modalElement.offsetHeight;
+      backdropElement.offsetHeight;
+      modalElement.classList.add("show");
+      backdropElement.classList.add("show");
+      document.body.classList.add("modal-open");
+      return;
+    }
+    modalElement = createModalElement(shortcutInfo);
+    backdropElement = createBackdropElement();
+    document.body.appendChild(backdropElement);
+    document.body.appendChild(modalElement);
+    document.body.classList.add("modal-open");
+    modalElement.style.display = "block";
+    backdropElement.style.display = "block";
+    modalElement.offsetHeight;
+    modalElement.classList.add("show");
+    backdropElement.classList.add("show");
+    addEventListeners();
+  }
+  function hideShortcutsModal() {
+    if (!modalElement)
+      return;
+    modalElement.classList.remove("show");
+    backdropElement.classList.remove("show");
+    setTimeout(() => {
+      if (modalElement) {
+        modalElement.style.display = "none";
+        backdropElement.style.display = "none";
+        document.body.classList.remove("modal-open");
+        removeEventListeners();
+        modalElement.remove();
+        backdropElement.remove();
+        modalElement = null;
+        backdropElement = null;
+      }
+    }, 150);
+  }
+  function createModalElement(shortcutInfo) {
+    const modal = document.createElement("div");
+    modal.id = MODAL_ID;
+    modal.className = "modal fade";
+    modal.tabIndex = -1;
+    modal.setAttribute("role", "dialog");
+    modal.innerHTML = `
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            ${shortcutInfo.name} - Keyboard Shortcuts
+          </h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          ${generateModesHTML(shortcutInfo.modes)}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  `;
+    return modal;
+  }
+  function createBackdropElement() {
+    const backdrop = document.createElement("div");
+    backdrop.id = BACKDROP_ID;
+    backdrop.className = "modal-backdrop fade";
+    return backdrop;
+  }
+  function generateModesHTML(modes) {
+    return modes.map((mode) => {
+      return `
+      <div class="mb-4">
+        <h6 class="font-weight-bold">
+          <span class="d-inline-block rounded-circle mr-2" style="width: 12px; height: 12px; background-color: ${mode.color};"></span>
+          ${mode.mode.charAt(0).toUpperCase() + mode.mode.slice(1)} Mode
+        </h6>
+        <p class="text-muted small mb-3">
+          <em>${mode.trigger}</em>
+        </p>
+        <table class="table table-sm table-hover">
+          <thead class="thead-light">
+            <tr>
+              <th style="width: 35%">Key</th>
+              <th style="width: 25%">Action</th>
+              <th style="width: 40%">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${generateShortcutsHTML(mode.shortcuts)}
+          </tbody>
+        </table>
+      </div>
+    `;
+    }).join("");
+  }
+  function generateShortcutsHTML(shortcuts) {
+    return shortcuts.map((shortcut) => `
+    <tr>
+      <td>${formatKeys(shortcut.key)}</td>
+      <td><strong>${shortcut.action}</strong></td>
+      <td class="text-muted">${shortcut.description}</td>
+    </tr>
+  `).join("");
+  }
+  function formatKeys(keyString) {
+    return keyString.split("+").map((key) => `<kbd class="bg-white border border-dark text-dark rounded-2 fw-bold shadow-sm">${key.trim()}</kbd>`).join(" + ");
+  }
+  function addEventListeners() {
+    const closeButtons = modalElement.querySelectorAll('[data-dismiss="modal"]');
+    closeButtons.forEach((btn) => {
+      btn.addEventListener("click", hideShortcutsModal);
+    });
+    document.addEventListener("keydown", handleEscapeKey);
+    backdropElement.addEventListener("click", hideShortcutsModal);
+    const modalDialog = modalElement.querySelector(".modal-dialog");
+    if (modalDialog) {
+      modalDialog.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+    }
+  }
+  function removeEventListeners() {
+    document.removeEventListener("keydown", handleEscapeKey);
+    if (backdropElement) {
+      backdropElement.removeEventListener("click", hideShortcutsModal);
+    }
+  }
+  function handleEscapeKey(e) {
+    if (e.key === "Escape") {
+      hideShortcutsModal();
+    }
+  }
+
   // extension/src/services/table-keyboard-handler.js
   var TableKeyboardHandler = class {
     constructor(selectors = {}) {
@@ -490,6 +635,7 @@
       this.linkNavigation = false;
       hideLight();
       resetLinkNavigation();
+      hideShortcutsModal();
     }
     processKey(e) {
       const { key, ctrlKey, shiftKey, altKey } = e;
@@ -528,6 +674,9 @@
             this.linkNavigation = true;
             showOrangeLight();
             navigateLink(key.replace("Arrow", "").toLowerCase(), this.selectors);
+            break;
+          case "/":
+            showShortcutsModal(this.getShortcutInfo());
             break;
           case "Escape":
             this.stopAll();
@@ -603,15 +752,18 @@
     stopAll() {
       this.vCtrl = false;
       hideLight();
+      hideShortcutsModal();
     }
     processKey(e) {
       const { key, ctrlKey, altKey } = e;
       if (this.vCtrl && !ctrlKey && !altKey) {
-        if (key === "Escape") {
+        if (key === "/") {
+          showShortcutsModal(this.getShortcutInfo());
+          return;
+        } else if (key === "Escape") {
           this.stopAll();
           return;
-        }
-        if (!this.submitClicked) {
+        } else if (!this.submitClicked) {
           const submitButton = document.querySelector("[type=submit]");
           if (submitButton) {
             setTimeout(() => {
@@ -711,41 +863,6 @@
     return false;
   }
 
-  // extension/src/lib/shortcut-modal.js
-  function createModal(shortcutData) {
-    if (document.getElementById("kb-shortcut-modal"))
-      return;
-    let rowsHtml = "";
-    shortcutData.modes.forEach((mode) => {
-      mode.shortcuts.forEach((sc) => {
-        rowsHtml += `
-        <div class="kb-row">
-          <kbd class="kb-key">${sc.key}</kbd>
-          <div class="kb-desc">
-            <div class="kb-action">${sc.action}</div>
-            <div class="kb-detail">${sc.description}</div>
-          </div>
-        </div>
-      `;
-      });
-    });
-    const modalHtml = `
-    <div id="kb-shortcut-modal" class="kb-modal-overlay">
-      <div class="kb-modal">
-        <div class="kb-header">
-          <h3 class="kb-title">${shortcutData.name} Shortcuts</h3>
-          <span class="kb-close">Press Esc to close</span>
-        </div>
-        <div class="kb-body">${rowsHtml}</div>
-      </div>
-    </div>
-  `;
-    document.body.insertAdjacentHTML("beforeend", modalHtml);
-  }
-  function removeModal() {
-    document.getElementById("kb-shortcut-modal")?.remove();
-  }
-
   // extension/src/services/orders-edit-keyboard-handler.js
   var OrdersEditKeyboardHandler = class {
     constructor() {
@@ -815,7 +932,7 @@
     stopAll() {
       this.vCtrl = false;
       hideLight();
-      removeModal();
+      hideShortcutsModal();
     }
     processKey(e) {
       const { key, ctrlKey, altKey } = e;
@@ -823,9 +940,8 @@
         if (key === "Escape") {
           this.stopAll();
           return;
-        }
-        if (key === "?") {
-          createModal(this.getShortcutInfo());
+        } else if (key === "/") {
+          showShortcutsModal(this.getShortcutInfo());
           return;
         } else if (key.toLowerCase() === "n") {
           clickNewButton();
