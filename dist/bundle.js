@@ -47,6 +47,225 @@
     statusIndicator.title = "";
   }
 
+  // extension/src/lib/shortcut-modal.js
+  var MODAL_ID = "keyboard-shortcuts-modal";
+  var BACKDROP_ID = "keyboard-shortcuts-backdrop";
+  var modalElement = null;
+  var backdropElement = null;
+  function showShortcutsModal(shortcutInfo) {
+    if (modalElement) {
+      modalElement.style.display = "block";
+      backdropElement.style.display = "block";
+      modalElement.offsetHeight;
+      backdropElement.offsetHeight;
+      modalElement.classList.add("show");
+      backdropElement.classList.add("show");
+      document.body.classList.add("modal-open");
+      return;
+    }
+    modalElement = createModalElement(shortcutInfo);
+    backdropElement = createBackdropElement();
+    document.body.appendChild(backdropElement);
+    document.body.appendChild(modalElement);
+    document.body.classList.add("modal-open");
+    modalElement.style.display = "block";
+    backdropElement.style.display = "block";
+    modalElement.offsetHeight;
+    modalElement.classList.add("show");
+    backdropElement.classList.add("show");
+    addEventListeners();
+  }
+  function hideShortcutsModal() {
+    if (!modalElement)
+      return;
+    modalElement.classList.remove("show");
+    backdropElement.classList.remove("show");
+    setTimeout(() => {
+      if (modalElement) {
+        modalElement.style.display = "none";
+        backdropElement.style.display = "none";
+        document.body.classList.remove("modal-open");
+        removeEventListeners();
+        modalElement.remove();
+        backdropElement.remove();
+        modalElement = null;
+        backdropElement = null;
+      }
+    }, 150);
+  }
+  function createModalElement(shortcutInfo) {
+    const modal = document.createElement("div");
+    modal.id = MODAL_ID;
+    modal.className = "modal fade";
+    modal.tabIndex = -1;
+    modal.setAttribute("role", "dialog");
+    modal.innerHTML = `
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            ${shortcutInfo.name} - Keyboard Shortcuts
+          </h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          ${generateModesHTML(shortcutInfo.modes)}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  `;
+    return modal;
+  }
+  function createBackdropElement() {
+    const backdrop = document.createElement("div");
+    backdrop.id = BACKDROP_ID;
+    backdrop.className = "modal-backdrop fade";
+    return backdrop;
+  }
+  function generateModesHTML(modes) {
+    return modes.map((mode) => {
+      return `
+      <div class="mb-4">
+        <h6 class="font-weight-bold">
+          <span class="d-inline-block rounded-circle mr-2" style="width: 12px; height: 12px; background-color: ${mode.color};"></span>
+          ${mode.mode.charAt(0).toUpperCase() + mode.mode.slice(1)} Mode
+        </h6>
+        <p class="text-muted small mb-3">
+          <em>${mode.trigger}</em>
+        </p>
+        <table class="table table-sm table-hover">
+          <thead class="thead-light">
+            <tr>
+              <th style="width: 35%">Key</th>
+              <th style="width: 25%">Action</th>
+              <th style="width: 40%">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${generateShortcutsHTML(mode.shortcuts)}
+          </tbody>
+        </table>
+      </div>
+    `;
+    }).join("");
+  }
+  function generateShortcutsHTML(shortcuts) {
+    return shortcuts.map((shortcut) => `
+    <tr>
+      <td>${formatKeys(shortcut.key)}</td>
+      <td><strong>${shortcut.action}</strong></td>
+      <td class="text-muted">${shortcut.description}</td>
+    </tr>
+  `).join("");
+  }
+  function formatKeys(keyString) {
+    return keyString.split("+").map((key) => `<kbd class="bg-white border border-dark text-dark rounded-2 fw-bold shadow-sm">${key.trim()}</kbd>`).join(" + ");
+  }
+  function addEventListeners() {
+    const closeButtons = modalElement.querySelectorAll('[data-dismiss="modal"]');
+    closeButtons.forEach((btn) => {
+      btn.addEventListener("click", hideShortcutsModal);
+    });
+    document.addEventListener("keydown", handleEscapeKey);
+    backdropElement.addEventListener("click", hideShortcutsModal);
+    const modalDialog = modalElement.querySelector(".modal-dialog");
+    if (modalDialog) {
+      modalDialog.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+    }
+  }
+  function removeEventListeners() {
+    document.removeEventListener("keydown", handleEscapeKey);
+    if (backdropElement) {
+      backdropElement.removeEventListener("click", hideShortcutsModal);
+    }
+  }
+  function handleEscapeKey(e) {
+    if (e.key === "Escape") {
+      hideShortcutsModal();
+    }
+  }
+
+  // extension/src/services/base-keyboard-handler.js
+  var BaseKeyboardHandler = class {
+    constructor() {
+      this.vCtrl = false;
+      createStatusIndicator();
+    }
+    getShortcutInfo() {
+      return {
+        name: "Base Shortcuts",
+        modes: [
+          {
+            mode: "command",
+            color: "green",
+            trigger: "Press and release Ctrl",
+            shortcuts: [
+              {
+                key: "Ctrl + /",
+                action: "Show shortcuts",
+                description: "Display keyboard shortcuts modal"
+              },
+              {
+                key: "Ctrl + Escape",
+                action: "Stop command",
+                description: "Cancel and reset keyboard handler"
+              }
+            ]
+          }
+        ]
+      };
+    }
+    handleKeyUp(e) {
+      if (e.key === "Control" && this.vCtrl) {
+        showGreenLight();
+      }
+    }
+    handleKeyDown(e) {
+      if (e.key === "Control") {
+        this.vCtrl = true;
+        return;
+      } else if (e.key === "Shift")
+        return;
+      if (this.vCtrl && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+      }
+      this.processKey(e);
+      this.vCtrl = false;
+      this.afterProcessKey();
+    }
+    afterProcessKey() {
+      hideLight();
+    }
+    handleClick() {
+      this.stopAll();
+    }
+    stopAll() {
+      this.vCtrl = false;
+      hideLight();
+      hideShortcutsModal();
+    }
+    processKey(e) {
+      const { key, ctrlKey, altKey } = e;
+      if (this.vCtrl && !ctrlKey && !altKey) {
+        if (key === "/") {
+          showShortcutsModal(this.getShortcutInfo());
+          return true;
+        } else if (key === "Escape") {
+          this.stopAll();
+          return true;
+        }
+      }
+      return false;
+    }
+  };
+
   // extension/src/lib/input-helpers.js
   function focusAndSelectInput(inputEl) {
     if (!inputEl)
@@ -356,155 +575,10 @@
     return false;
   }
 
-  // extension/src/lib/shortcut-modal.js
-  var MODAL_ID = "keyboard-shortcuts-modal";
-  var BACKDROP_ID = "keyboard-shortcuts-backdrop";
-  var modalElement = null;
-  var backdropElement = null;
-  function showShortcutsModal(shortcutInfo) {
-    if (modalElement) {
-      modalElement.style.display = "block";
-      backdropElement.style.display = "block";
-      modalElement.offsetHeight;
-      backdropElement.offsetHeight;
-      modalElement.classList.add("show");
-      backdropElement.classList.add("show");
-      document.body.classList.add("modal-open");
-      return;
-    }
-    modalElement = createModalElement(shortcutInfo);
-    backdropElement = createBackdropElement();
-    document.body.appendChild(backdropElement);
-    document.body.appendChild(modalElement);
-    document.body.classList.add("modal-open");
-    modalElement.style.display = "block";
-    backdropElement.style.display = "block";
-    modalElement.offsetHeight;
-    modalElement.classList.add("show");
-    backdropElement.classList.add("show");
-    addEventListeners();
-  }
-  function hideShortcutsModal() {
-    if (!modalElement)
-      return;
-    modalElement.classList.remove("show");
-    backdropElement.classList.remove("show");
-    setTimeout(() => {
-      if (modalElement) {
-        modalElement.style.display = "none";
-        backdropElement.style.display = "none";
-        document.body.classList.remove("modal-open");
-        removeEventListeners();
-        modalElement.remove();
-        backdropElement.remove();
-        modalElement = null;
-        backdropElement = null;
-      }
-    }, 150);
-  }
-  function createModalElement(shortcutInfo) {
-    const modal = document.createElement("div");
-    modal.id = MODAL_ID;
-    modal.className = "modal fade";
-    modal.tabIndex = -1;
-    modal.setAttribute("role", "dialog");
-    modal.innerHTML = `
-    <div class="modal-dialog modal-lg" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">
-            ${shortcutInfo.name} - Keyboard Shortcuts
-          </h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
-        <div class="modal-body">
-          ${generateModesHTML(shortcutInfo.modes)}
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-        </div>
-      </div>
-    </div>
-  `;
-    return modal;
-  }
-  function createBackdropElement() {
-    const backdrop = document.createElement("div");
-    backdrop.id = BACKDROP_ID;
-    backdrop.className = "modal-backdrop fade";
-    return backdrop;
-  }
-  function generateModesHTML(modes) {
-    return modes.map((mode) => {
-      return `
-      <div class="mb-4">
-        <h6 class="font-weight-bold">
-          <span class="d-inline-block rounded-circle mr-2" style="width: 12px; height: 12px; background-color: ${mode.color};"></span>
-          ${mode.mode.charAt(0).toUpperCase() + mode.mode.slice(1)} Mode
-        </h6>
-        <p class="text-muted small mb-3">
-          <em>${mode.trigger}</em>
-        </p>
-        <table class="table table-sm table-hover">
-          <thead class="thead-light">
-            <tr>
-              <th style="width: 35%">Key</th>
-              <th style="width: 25%">Action</th>
-              <th style="width: 40%">Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${generateShortcutsHTML(mode.shortcuts)}
-          </tbody>
-        </table>
-      </div>
-    `;
-    }).join("");
-  }
-  function generateShortcutsHTML(shortcuts) {
-    return shortcuts.map((shortcut) => `
-    <tr>
-      <td>${formatKeys(shortcut.key)}</td>
-      <td><strong>${shortcut.action}</strong></td>
-      <td class="text-muted">${shortcut.description}</td>
-    </tr>
-  `).join("");
-  }
-  function formatKeys(keyString) {
-    return keyString.split("+").map((key) => `<kbd class="bg-white border border-dark text-dark rounded-2 fw-bold shadow-sm">${key.trim()}</kbd>`).join(" + ");
-  }
-  function addEventListeners() {
-    const closeButtons = modalElement.querySelectorAll('[data-dismiss="modal"]');
-    closeButtons.forEach((btn) => {
-      btn.addEventListener("click", hideShortcutsModal);
-    });
-    document.addEventListener("keydown", handleEscapeKey);
-    backdropElement.addEventListener("click", hideShortcutsModal);
-    const modalDialog = modalElement.querySelector(".modal-dialog");
-    if (modalDialog) {
-      modalDialog.addEventListener("click", (e) => {
-        e.stopPropagation();
-      });
-    }
-  }
-  function removeEventListeners() {
-    document.removeEventListener("keydown", handleEscapeKey);
-    if (backdropElement) {
-      backdropElement.removeEventListener("click", hideShortcutsModal);
-    }
-  }
-  function handleEscapeKey(e) {
-    if (e.key === "Escape") {
-      hideShortcutsModal();
-    }
-  }
-
   // extension/src/services/table-keyboard-handler.js
-  var TableKeyboardHandler = class {
+  var TableKeyboardHandler = class extends BaseKeyboardHandler {
     constructor(selectors = {}) {
-      this.vCtrl = false;
+      super();
       this.linkNavigation = false;
       this.selectors = {
         headers: `.rt-resizable-header-content${selectors.additionalHeaders ? ", " + selectors.additionalHeaders : ""}`,
@@ -515,135 +589,108 @@
         nextPage: selectors.nextPage || ".-next",
         prevPage: selectors.prevPage || ".-previous"
       };
-      createStatusIndicator();
     }
     getShortcutInfo() {
+      const baseInfo = super.getShortcutInfo();
       return {
-        "name": "Main Page",
-        "modes": [
+        name: "Main Page",
+        modes: [
           {
-            "mode": "command",
-            "color": "green",
-            "trigger": "Press and release Ctrl",
-            "shortcuts": [
+            ...baseInfo.modes[0],
+            shortcuts: [
               {
-                "key": "Ctrl + [Letter]",
-                "action": "Focus columns by letter",
-                "description": "Focus table header starting with the letter (add Shift for reverse)"
+                key: "Ctrl + [Letter]",
+                action: "Focus columns by letter",
+                description: "Focus table header starting with the letter (add Shift for reverse)"
               },
               {
-                "key": "Ctrl + Backspace",
-                "action": "Clear filters",
-                "description": "Clear all filter inputs"
+                key: "Ctrl + Backspace",
+                action: "Clear filters",
+                description: "Clear all filter inputs"
               },
               {
-                "key": "Ctrl + .",
-                "action": "Open date picker",
-                "description": "Open date picker for focused input"
+                key: "Ctrl + .",
+                action: "Open date picker",
+                description: "Open date picker for focused input"
               },
               {
-                "key": "Ctrl + Enter",
-                "action": "Sort column",
-                "description": "Click the header of focused input"
+                key: "Ctrl + Enter",
+                action: "Sort column",
+                description: "Click the header of focused input"
               },
               {
-                "key": "Ctrl + \u2192",
-                "action": "Next page",
-                "description": "Go to next page"
+                key: "Ctrl + \u2192",
+                action: "Next page",
+                description: "Go to next page"
               },
               {
-                "key": "Ctrl + \u2190",
-                "action": "Prev. page",
-                "description": "Go to previous page"
+                key: "Ctrl + \u2190",
+                action: "Prev. page",
+                description: "Go to previous page"
               },
               {
-                "key": "Ctrl + F5",
-                "action": "Reload w/ filters",
-                "description": "Reload app while preserving filters"
+                key: "Ctrl + F5",
+                action: "Reload w/ filters",
+                description: "Reload app while preserving filters"
               },
               {
-                "key": "Ctrl + \u2191/\u2193",
-                "action": "Enter link navigation",
-                "description": "Start link navigation mode"
+                key: "Ctrl + \u2191/\u2193",
+                action: "Enter link navigation",
+                description: "Start link navigation mode"
               },
-              {
-                "key": "Ctrl + Escape",
-                "action": "Stop commend",
-                "description": "Cancel and reset keyboard handler"
-              }
+              ...baseInfo.modes[0].shortcuts
             ]
           },
           {
-            "mode": "linkNavigation",
-            "color": "orange",
-            "trigger": "Activated by Ctrl + \u2191/\u2193",
-            "shortcuts": [
+            mode: "linkNavigation",
+            color: "orange",
+            trigger: "Activated by Ctrl + \u2191/\u2193",
+            shortcuts: [
               {
-                "key": "\u2191",
-                "action": "Navigate Up",
-                "description": "Move to previous link"
+                key: "\u2191",
+                action: "Navigate Up",
+                description: "Move to previous link"
               },
               {
-                "key": "\u2193",
-                "action": "Navigate Down",
-                "description": "Move to next link"
+                key: "\u2193",
+                action: "Navigate Down",
+                description: "Move to next link"
               },
               {
-                "key": "\u2190",
-                "action": "Navigate Left",
-                "description": "Move to link on the left"
+                key: "\u2190",
+                action: "Navigate Left",
+                description: "Move to link on the left"
               },
               {
-                "key": "\u2192",
-                "action": "Navigate Right",
-                "description": "Move to link on the right"
+                key: "\u2192",
+                action: "Navigate Right",
+                description: "Move to link on the right"
               },
               {
-                "key": "Escape",
-                "action": "Exit link navigation",
-                "description": "Exit link navigation mode"
+                key: "Escape",
+                action: "Exit link navigation",
+                description: "Exit link navigation mode"
               }
             ]
           }
         ]
       };
     }
-    handleKeyUp(e) {
-      if (e.key === "Control" && this.vCtrl) {
-        showGreenLight();
-      }
-    }
-    handleKeyDown(e) {
-      if (e.key === "Control") {
-        this.vCtrl = true;
-        return;
-      } else if (e.key === "Shift")
-        return;
-      if (this.vCtrl && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-      }
-      this.processKey(e);
-      this.vCtrl = false;
-      if (!this.linkNavigation)
+    afterProcessKey() {
+      if (!this.linkNavigation) {
         hideLight();
-    }
-    handleClick() {
-      this.stopAll();
+      }
     }
     stopAll() {
-      this.vCtrl = false;
+      super.stopAll();
       this.linkNavigation = false;
-      hideLight();
       resetLinkNavigation();
-      hideShortcutsModal();
     }
     processKey(e) {
+      if (super.processKey(e))
+        return;
       const { key, ctrlKey, shiftKey, altKey } = e;
       if (this.vCtrl && !ctrlKey && !altKey) {
-        if (key === "Escape") {
-          this.stopAll();
-          return;
-        }
         if (key.length === 1 && /[a-zA-Z]/.test(key)) {
           focusHeaderByLetter(key, this.selectors, shiftKey);
           return;
@@ -675,12 +722,6 @@
             showOrangeLight();
             navigateLink(key.replace("Arrow", "").toLowerCase(), this.selectors);
             break;
-          case "/":
-            showShortcutsModal(this.getShortcutInfo());
-            break;
-          case "Escape":
-            this.stopAll();
-            break;
           default:
             break;
         }
@@ -698,72 +739,36 @@
   };
 
   // extension/src/services/login-keyboard-handler.js
-  var LoginKeyboardHandler = class {
+  var LoginKeyboardHandler = class extends BaseKeyboardHandler {
     constructor() {
-      this.vCtrl = false;
+      super();
       this.submitClicked = false;
-      createStatusIndicator();
     }
     getShortcutInfo() {
+      const baseInfo = super.getShortcutInfo();
       return {
-        "name": "Login Page",
-        "modes": [
+        name: "Login Page",
+        modes: [
           {
-            "mode": "command",
-            "color": "green",
-            "trigger": "Press and release Ctrl",
-            "shortcuts": [
+            ...baseInfo.modes[0],
+            shortcuts: [
               {
-                "key": "Ctrl + [Any Key]",
-                "action": "Log in",
-                "description": "Click the Login button"
+                key: "Ctrl + [Any Key]",
+                action: "Log in",
+                description: "Click the Login button"
               },
-              {
-                "key": "Ctrl + Escape",
-                "action": "Stop commend",
-                "description": "Cancel and reset keyboard handler"
-              }
+              ...baseInfo.modes[0].shortcuts
             ]
           }
         ]
       };
     }
-    handleKeyUp(e) {
-      if (e.key === "Control" && this.vCtrl) {
-        showGreenLight();
-      }
-    }
-    handleKeyDown(e) {
-      if (e.key === "Control") {
-        this.vCtrl = true;
-        return;
-      } else if (e.key === "Shift")
-        return;
-      if (this.vCtrl && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-      }
-      this.processKey(e);
-      this.vCtrl = false;
-      hideLight();
-    }
-    handleClick() {
-      this.stopAll();
-    }
-    stopAll() {
-      this.vCtrl = false;
-      hideLight();
-      hideShortcutsModal();
-    }
     processKey(e) {
+      if (super.processKey(e))
+        return;
       const { key, ctrlKey, altKey } = e;
       if (this.vCtrl && !ctrlKey && !altKey) {
-        if (key === "/") {
-          showShortcutsModal(this.getShortcutInfo());
-          return;
-        } else if (key === "Escape") {
-          this.stopAll();
-          return;
-        } else if (!this.submitClicked) {
+        if (!this.submitClicked) {
           const submitButton = document.querySelector("[type=submit]");
           if (submitButton) {
             setTimeout(() => {
@@ -854,6 +859,15 @@
     }
     return false;
   }
+  function clickDeliveriesButton() {
+    const button = document.querySelector(".btn.btn-outline-primary.mt-2[href]");
+    if (button) {
+      button.click();
+      console.log("Clicked Deliveries button");
+      return true;
+    }
+    return false;
+  }
   function isAllItemsTabActive() {
     const activeTab = document.querySelector(".nav-tabs a.nav-link.active");
     if (activeTab) {
@@ -864,87 +878,59 @@
   }
 
   // extension/src/services/orders-edit-keyboard-handler.js
-  var OrdersEditKeyboardHandler = class {
+  var OrdersEditKeyboardHandler = class extends BaseKeyboardHandler {
     constructor() {
-      this.vCtrl = false;
-      createStatusIndicator();
+      super();
     }
     getShortcutInfo() {
+      const baseInfo = super.getShortcutInfo();
       return {
-        "name": "Orders Page",
-        "modes": [
+        name: "Orders Page",
+        modes: [
           {
-            "mode": "command",
-            "color": "green",
-            "trigger": "Press and release Ctrl",
-            "shortcuts": [
+            ...baseInfo.modes[0],
+            shortcuts: [
               {
-                "key": "Ctrl + N",
-                "action": "New delivery",
-                "description": "Click the 'create new delivery' button in 'All items' tab"
+                key: "Ctrl + [Letter]",
+                action: "Click Tab By Letter",
+                description: "Click tab starting with the letter"
               },
               {
-                "key": "Ctrl + [Letter]",
-                "action": "Click Tab By Letter",
-                "description": "Click tab starting with the letter"
+                key: "Ctrl + K",
+                action: "Kallah invoice",
+                description: "Click tab Kallah side invoice"
               },
               {
-                "key": "Ctrl + K",
-                "action": "Kallah invoice",
-                "description": "Click tab Kallah side invoice"
+                key: "Ctrl + C",
+                action: "Chosson invoice",
+                description: "Click tab Chosson side invoice"
               },
               {
-                "key": "Ctrl + C",
-                "action": "Chosson invoice",
-                "description": "Click tab Chosson side invoice"
+                key: "Ctrl + D",
+                action: "Deliveries",
+                description: "Opens deliveries for this order"
               },
               {
-                "key": "Ctrl + Escape",
-                "action": "Stop commend",
-                "description": "Cancel and reset keyboard handler"
-              }
+                key: "Ctrl + N",
+                action: "New delivery",
+                description: "Click the 'create new delivery' button in 'All items' tab"
+              },
+              ...baseInfo.modes[0].shortcuts
             ]
           }
         ]
       };
     }
-    handleKeyUp(e) {
-      if (e.key === "Control" && this.vCtrl) {
-        showGreenLight();
-      }
-    }
-    handleKeyDown(e) {
-      if (e.key === "Control") {
-        this.vCtrl = true;
-        return;
-      } else if (e.key === "Shift")
-        return;
-      if (this.vCtrl && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-      }
-      this.processKey(e);
-      this.vCtrl = false;
-      hideLight();
-    }
-    handleClick() {
-      this.stopAll();
-    }
-    stopAll() {
-      this.vCtrl = false;
-      hideLight();
-      hideShortcutsModal();
-    }
     processKey(e) {
+      if (super.processKey(e))
+        return;
       const { key, ctrlKey, altKey } = e;
       if (this.vCtrl && !ctrlKey && !altKey) {
-        if (key === "Escape") {
-          this.stopAll();
-          return;
-        } else if (key === "/") {
-          showShortcutsModal(this.getShortcutInfo());
-          return;
-        } else if (key.toLowerCase() === "n") {
+        if (key.toLowerCase() === "n") {
           clickNewButton();
+          return;
+        } else if (key.toLowerCase() === "d") {
+          clickDeliveriesButton();
           return;
         } else if (key.length === 1 && /[a-zA-Z]/.test(key)) {
           clickTabByLetter(key);
@@ -971,7 +957,7 @@
     } else if (tablePages.some((page) => path.startsWith(page))) {
       currentHandler = new TableKeyboardHandler();
     } else {
-      currentHandler = new TableKeyboardHandler();
+      currentHandler = new BaseKeyboardHandler();
     }
     currentHandler.keyUpListener = (e) => currentHandler.handleKeyUp(e);
     currentHandler.keyDownListener = (e) => currentHandler.handleKeyDown(e);

@@ -1,5 +1,6 @@
 // src/services/table-keyboard-handler.js
-import { createStatusIndicator, showGreenLight, showOrangeLight, hideLight } from '../lib/status-indicator.js';
+import BaseKeyboardHandler from './base-keyboard-handler.js';
+import { showOrangeLight, hideLight } from '../lib/status-indicator.js';
 import { clearAllInputs } from '../lib/input-helpers.js';
 import { focusHeaderByLetter, clickHeaderForFocusedInput } from '../lib/header-navigation.js';
 import { navigateLink, resetLinkNavigation } from '../lib/link-navigation.js';
@@ -7,11 +8,10 @@ import { clickNextPage, clickPreviousPage } from '../lib/pagination.js';
 import { saveFilters, restoreFilters } from '../lib/filters.js';
 import { reloadReactApp } from '../lib/react-reload.js';
 import { openDatePickerForFocusedInput } from '../lib/date-picker.js';
-import { showShortcutsModal, hideShortcutsModal } from '../lib/shortcut-modal.js';
 
-export default class TableKeyboardHandler {
+export default class TableKeyboardHandler extends BaseKeyboardHandler {
   constructor(selectors = {}) {
-    this.vCtrl = false;
+    super();
     this.linkNavigation = false;
     
     // Build selectors with Pattern 2 (add to base)
@@ -24,95 +24,88 @@ export default class TableKeyboardHandler {
       nextPage: selectors.nextPage || '.-next',
       prevPage: selectors.prevPage || '.-previous'
     };
-    
-    createStatusIndicator();
   }
 
   getShortcutInfo() {
+    const baseInfo = super.getShortcutInfo();
     return {
-      "name": "Main Page",
-      "modes": [
+      name: "Main Page",
+      modes: [
         {
-          "mode": "command",
-          "color": "green",
-          "trigger": "Press and release Ctrl",
-          "shortcuts": [
+          ...baseInfo.modes[0],
+          shortcuts: [
             {
-              "key": "Ctrl + [Letter]",
-              "action": "Focus columns by letter",
-              "description": "Focus table header starting with the letter (add Shift for reverse)"
+              key: "Ctrl + [Letter]",
+              action: "Focus columns by letter",
+              description: "Focus table header starting with the letter (add Shift for reverse)"
             },
             {
-              "key": "Ctrl + Backspace",
-              "action": "Clear filters",
-              "description": "Clear all filter inputs"
+              key: "Ctrl + Backspace",
+              action: "Clear filters",
+              description: "Clear all filter inputs"
             },
             {
-              "key": "Ctrl + .",
-              "action": "Open date picker",
-              "description": "Open date picker for focused input"
+              key: "Ctrl + .",
+              action: "Open date picker",
+              description: "Open date picker for focused input"
             },
             {
-              "key": "Ctrl + Enter",
-              "action": "Sort column",
-              "description": "Click the header of focused input"
+              key: "Ctrl + Enter",
+              action: "Sort column",
+              description: "Click the header of focused input"
             },
             {
-              "key": "Ctrl + →",
-              "action": "Next page",
-              "description": "Go to next page"
+              key: "Ctrl + →",
+              action: "Next page",
+              description: "Go to next page"
             },
             {
-              "key": "Ctrl + ←",
-              "action": "Prev. page",
-              "description": "Go to previous page"
+              key: "Ctrl + ←",
+              action: "Prev. page",
+              description: "Go to previous page"
             },
             {
-              "key": "Ctrl + F5",
-              "action": "Reload w/ filters",
-              "description": "Reload app while preserving filters"
+              key: "Ctrl + F5",
+              action: "Reload w/ filters",
+              description: "Reload app while preserving filters"
             },
             {
-              "key": "Ctrl + ↑/↓",
-              "action": "Enter link navigation",
-              "description": "Start link navigation mode"
+              key: "Ctrl + ↑/↓",
+              action: "Enter link navigation",
+              description: "Start link navigation mode"
             },
-            {
-              "key": "Ctrl + Escape",
-              "action": "Stop commend",
-              "description": "Cancel and reset keyboard handler"
-            }
+            ...baseInfo.modes[0].shortcuts
           ]
         },
         {
-          "mode": "linkNavigation",
-          "color": "orange",
-          "trigger": "Activated by Ctrl + ↑/↓",
-          "shortcuts": [
+          mode: "linkNavigation",
+          color: "orange",
+          trigger: "Activated by Ctrl + ↑/↓",
+          shortcuts: [
             {
-              "key": "↑",
-              "action": "Navigate Up",
-              "description": "Move to previous link"
+              key: "↑",
+              action: "Navigate Up",
+              description: "Move to previous link"
             },
             {
-              "key": "↓",
-              "action": "Navigate Down",
-              "description": "Move to next link"
+              key: "↓",
+              action: "Navigate Down",
+              description: "Move to next link"
             },
             {
-              "key": "←",
-              "action": "Navigate Left",
-              "description": "Move to link on the left"
+              key: "←",
+              action: "Navigate Left",
+              description: "Move to link on the left"
             },
             {
-              "key": "→",
-              "action": "Navigate Right",
-              "description": "Move to link on the right"
+              key: "→",
+              action: "Navigate Right",
+              description: "Move to link on the right"
             },
             {
-              "key": "Escape",
-              "action": "Exit link navigation",
-              "description": "Exit link navigation mode"
+              key: "Escape",
+              action: "Exit link navigation",
+              description: "Exit link navigation mode"
             }
           ]
         }
@@ -120,51 +113,24 @@ export default class TableKeyboardHandler {
     };
   }
 
-  handleKeyUp(e) {
-    if (e.key === "Control" && this.vCtrl) {
-      showGreenLight();
+  afterProcessKey() {
+    if (!this.linkNavigation) {
+      hideLight();
     }
-  }
-
-  handleKeyDown(e) {
-    if (e.key === "Control") {
-      this.vCtrl = true;
-      // do not turn on the light,
-      return;
-    } else if (e.key === "Shift") return;
-
-    if (this.vCtrl && !e.ctrlKey && !e.altKey) {
-      e.preventDefault();
-    }
-    
-    this.processKey(e);
-
-    this.vCtrl = false;
-    if (!this.linkNavigation) hideLight();
-  }
-
-  handleClick() {
-    this.stopAll();
   }
 
   stopAll() {
-    this.vCtrl = false;
+    super.stopAll();
     this.linkNavigation = false;
-    hideLight();
     resetLinkNavigation();
-    hideShortcutsModal();
   }
 
   processKey(e) {
+    if (super.processKey(e)) return;
+    
     const { key, ctrlKey, shiftKey, altKey } = e;
     
     if (this.vCtrl && !ctrlKey && !altKey) {
-      // Check for Escape
-      if (key === "Escape") {
-        this.stopAll();
-        return;
-      }
-      
       // Check if key is a letter (a-z or A-Z)
       if (key.length === 1 && /[a-zA-Z]/.test(key)) {
         focusHeaderByLetter(key, this.selectors, shiftKey);
@@ -197,12 +163,6 @@ export default class TableKeyboardHandler {
           this.linkNavigation = true;
           showOrangeLight();
           navigateLink(key.replace("Arrow", "").toLowerCase(), this.selectors);
-          break;
-        case '/':
-          showShortcutsModal(this.getShortcutInfo());
-          break;
-        case "Escape":
-          this.stopAll();
           break;
         default:
           break;

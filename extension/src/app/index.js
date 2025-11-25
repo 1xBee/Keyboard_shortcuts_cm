@@ -1,4 +1,5 @@
 // src/app/index.js
+import BaseKeyboardHandler from '../services/base-keyboard-handler.js';
 import TableKeyboardHandler from '../services/table-keyboard-handler.js';
 import LoginKeyboardHandler from '../services/login-keyboard-handler.js';
 import OrdersEditKeyboardHandler from '../services/orders-edit-keyboard-handler.js';
@@ -24,7 +25,7 @@ function initializeHandler() {
   } else if (tablePages.some(page => path.startsWith(page))) {
     currentHandler = new TableKeyboardHandler();
   } else {
-    currentHandler = new TableKeyboardHandler();
+    currentHandler = new BaseKeyboardHandler();
   }
 
   // Create bound listeners

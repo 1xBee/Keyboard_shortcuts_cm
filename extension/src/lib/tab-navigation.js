@@ -97,6 +97,16 @@ export function clickNewButton() {
   return false;
 }
 
+export function clickDeliveriesButton() {
+  const button = document.querySelector('.btn.btn-outline-primary.mt-2[href]');
+  if (button) {
+    button.click();
+    console.log("Clicked Deliveries button");
+    return true;
+  }
+  return false;
+}
+
 function isAllItemsTabActive() {
   const activeTab = document.querySelector('.nav-tabs a.nav-link.active');
   if (activeTab) {
